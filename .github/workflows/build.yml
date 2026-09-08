@@ -1,0 +1,72 @@
+# Laboratorio 2 - INF384 - Pipeline con validacion de calidad
+# pagoseguro-portal-seed-mediocre (Node.js + Vercel + SonarQube Cloud)
+#
+# Pendiente de confirmar cuando el profe entregue el enunciado el jueves:
+#   - el nombre exacto del script de test (asumido: "npm test" con Jest)
+#   - si pide un umbral/regla especifica del Quality Gate mas alla del "Sonar way" default
+
+name: Pipeline con validacion de calidad
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validar:
+    name: SonarQube
+    runs-on: ubuntu-latest   # cambia a windows-latest si prefieres igualar tu compu local
+
+    steps:
+      - name: Checkout con historial completo
+        uses: actions/checkout@34e114876db0b11c390a56381ad16ebd13914fd5 # v4.3.1
+        with:
+          fetch-depth: 0
+          # obligatorio: sin esto SonarQube Cloud no distingue codigo nuevo del historico
+
+      - name: Configurar Node (segun .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Instalar desde el archivo de bloqueo
+        run: npm ci
+        # npm ci, no npm install: respeta package-lock.json al pie de la letra (build reproducible)
+
+      - name: Pruebas con reporte de cobertura
+        run: npm test -- --coverage --coverageReporters=lcov
+        # AJUSTAR si tu test runner no es Jest o el script tiene otro nombre.
+        # Debe producir ./coverage/lcov.info (ver sonar-project.properties)
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee8f816d36501671557c97f5995 # v8.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: SonarQube Quality Gate check
+        id: quality-gate-check
+        uses: SonarSource/sonarqube-quality-gate-action@master
+        with:
+          pollingTimeoutSec: 600
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        # Si el Quality Gate da FAILED, este step falla y con el falla el job "validar" entero.
+        # Esto es lo que despues detiene el despliegue (rubrica: 2 pts).
+
+  desplegar:
+    name: Desplegar (placeholder)
+    needs: validar
+    # <- el quality gate real: si "validar" falla (Quality Gate rojo), este job NO se ejecuta.
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Simular despliegue
+        run: echo "Quality Gate OK -> aqui iria el despliegue real (Vercel o AWS, segun confirme el profe el jueves)"
+        # AJUSTAR el jueves: reemplazar este step por el despliegue real.
+        # Si es Vercel: run: npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
+        # Si es AWS Lambda: aws lambda update-function-code ... (necesita las credenciales del AWS Learner Lab)
