@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout con historial completo
-        uses: actions/checkout@34e114876db0b11c390a56381ad16ebd13914fd5 # v4.3.1
+        uses: actions/checkout@v4.3.1
         with:
           fetch-depth: 0
           # obligatorio: sin esto SonarQube Cloud no distingue codigo nuevo del historico
@@ -41,7 +41,7 @@ jobs:
         # Debe producir ./coverage/lcov.info (ver sonar-project.properties)
 
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee8f816d36501671557c97f5995 # v8.1.0
+        uses: SonarSource/sonarqube-scan-action@v8.1.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
