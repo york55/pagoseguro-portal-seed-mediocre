@@ -1,0 +1,79 @@
+# Laboratorio 2 - INF384 - Pipeline con validacion de calidad
+# pagoseguro-portal-seed-mediocre (Node.js + Vercel + SonarQube Cloud)
+#
+# Pendiente de confirmar cuando el profe entregue el enunciado el jueves:
+#   - el nombre exacto del script de test (asumido: "npm test" con Jest)
+#   - si pide un umbral/regla especifica del Quality Gate mas alla del "Sonar way" default
+
+name: Pipeline con validacion de calidad
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validar:
+    name: SonarQube
+    runs-on: ubuntu-latest   # cambia a windows-latest si prefieres igualar tu compu local
+
+    steps:
+      - name: Checkout con historial completo
+        uses: actions/checkout@v4.3.1
+        with:
+          fetch-depth: 0
+          # obligatorio: sin esto SonarQube Cloud no distingue codigo nuevo del historico
+
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+        # version fija porque package.json declara "packageManager": "pnpm@10.34.5"
+
+      - name: Configurar Node (segun .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+
+      - name: Instalar desde el archivo de bloqueo
+        run: pnpm install --frozen-lockfile
+        # --frozen-lockfile es el equivalente en pnpm de "npm ci": respeta pnpm-lock.yaml
+        # al pie de la letra y falla si el lockfile no coincide con package.json
+
+      - name: Pruebas con reporte de cobertura
+        run: pnpm test -- --coverage --coverageReporters=lcov
+        # AJUSTAR si tu test runner no es Jest o el script tiene otro nombre.
+        # Debe producir ./coverage/lcov.info (ver sonar-project.properties)
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v8.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: SonarQube Quality Gate check
+        id: quality-gate-check
+        uses: SonarSource/sonarqube-quality-gate-action@master
+        with:
+          pollingTimeoutSec: 600
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        # Si el Quality Gate da FAILED, este step falla y con el falla el job "validar" entero.
+        # Esto es lo que despues detiene el despliegue (rubrica: 2 pts).
+
+  desplegar:
+    name: Desplegar (placeholder)
+    needs: validar
+    # <- el quality gate real: si "validar" falla (Quality Gate rojo), este job NO se ejecuta.
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Simular despliegue
+        run: echo "Quality Gate OK -> aqui iria el despliegue real (Vercel o AWS, segun confirme el profe el jueves)"
+        # AJUSTAR el jueves: reemplazar este step por el despliegue real.
+        # Si es Vercel: run: npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
+        # Si es AWS Lambda: aws lambda update-function-code ... (necesita las credenciales del AWS Learner Lab)
