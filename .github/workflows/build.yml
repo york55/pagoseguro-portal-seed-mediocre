@@ -25,18 +25,25 @@ jobs:
           fetch-depth: 0
           # obligatorio: sin esto SonarQube Cloud no distingue codigo nuevo del historico
 
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+        # version fija porque package.json declara "packageManager": "pnpm@10.34.5"
+
       - name: Configurar Node (segun .nvmrc)
         uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
-          cache: npm
+          cache: pnpm
 
       - name: Instalar desde el archivo de bloqueo
-        run: npm ci
-        # npm ci, no npm install: respeta package-lock.json al pie de la letra (build reproducible)
+        run: pnpm install --frozen-lockfile
+        # --frozen-lockfile es el equivalente en pnpm de "npm ci": respeta pnpm-lock.yaml
+        # al pie de la letra y falla si el lockfile no coincide con package.json
 
       - name: Pruebas con reporte de cobertura
-        run: npm test -- --coverage --coverageReporters=lcov
+        run: pnpm test -- --coverage --coverageReporters=lcov
         # AJUSTAR si tu test runner no es Jest o el script tiene otro nombre.
         # Debe producir ./coverage/lcov.info (ver sonar-project.properties)
 
